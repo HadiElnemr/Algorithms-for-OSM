@@ -13,21 +13,128 @@
 #include <fstream>
 #include <iostream>
 
+#include <unordered_map>
+#include <map>
+#include <utility>
+
+void merge_touching_ways_nestedloop(std::vector<std::vector<osmium::object_id_type>> &ways){
+    std::vector<std::vector<osmium::object_id_type>> unclosed_ways;
+    // Consider only ways that are not closed
+    for(std::size_t i = 0; i < ways.size(); i++)
+        if(ways[i].front() != ways[i].back())
+            unclosed_ways.push_back(ways[i]);
+    std::cout << "Unclosed ways: " << unclosed_ways.size() << ", out of Ways: " << ways.size() << std::endl;
+    
+
+    // std::vector<std::vector<osmium::object_id_type>> merged_way;
+    int removed_count = 0;
+    std::vector<bool> removed_way_flags;
+    removed_way_flags.resize(unclosed_ways.size(), false);
+
+    for(std::size_t i = 0; i < unclosed_ways.size(); i++)
+    {
+        if(removed_way_flags[i])
+            continue;
+        for(std::size_t j = i+1; j < unclosed_ways.size(); j++){
+            if (removed_way_flags[j])
+                continue;
+            if(unclosed_ways[i].back() == unclosed_ways[j].front()){
+                unclosed_ways[i].insert(unclosed_ways[i].end(), unclosed_ways[j].begin(), unclosed_ways[j].end());
+                // merged_way.push_back(ways[i]);
+                // ways.erase(ways.begin() + j);
+                removed_way_flags[j] = true;
+                removed_count++;
+                // j = i;
+            } else if(unclosed_ways[i].front() == unclosed_ways[j].back()){
+                unclosed_ways[j].insert(unclosed_ways[j].end(), unclosed_ways[i].begin(), unclosed_ways[i].end());
+                // ways.erase(ways.begin() + i);
+                removed_way_flags[i] = true;
+                removed_count++;
+
+                // if(i==0)
+                //     continue;
+                // i -= 1;
+            }
+            printf("%ld and %ld\n", i, j);
+        }
+    }
+    std::cout << "Removed ways: " << removed_count << std::endl;
+}
+
+void merge_touching_ways_pair(std::vector<std::vector<osmium::object_id_type>> &ways){
+    std::unordered_map<std::pair<std::size_t, std::size_t>, std::vector<osmium::object_id_type>> hash_map;
+    std::vector<std::vector<osmium::object_id_type>> unclosed_ways;
+    // Consider only ways that are not closed
+    for(std::size_t i = 0; i < ways.size(); i++)
+        if(ways[i].front() != ways[i].back()){
+            unclosed_ways.push_back(ways[i]);
+            hash_map[std::make_pair(ways[i].front(), ways[i].back())] = ways[i]; // hash_map has all unclosed ways
+        }
+    int count_found = 0;
+    int count_not_found = 0;
+    // std::cout << "Unclosed ways: " << unclosed_ways.size() << std::endl;
+    // std::cout << "Hash map size before merging: " << hash_map.size() << std::endl;
+
+    for(std::size_t i = 0; i < unclosed_ways.size(); i++)
+    {
+        if(hash_map.find(unclosed_ways[i].back()) != hash_map.end()){ // if the way is touching another way
+            count_found++; // unclosed way has the front and we check for its end in the hash_map
+            unclosed_ways[i].insert(unclosed_ways[i].end(), hash_map[unclosed_ways[i].back()].begin()+1, hash_map[unclosed_ways[i].back()].end());
+            // hash_map[unclosed_ways[i].front()] = unclosed_ways[i]; // update hash_map with the new way
+            auto end = hash_map[unclosed_ways[i].front()].end();
+            auto front_way = hash_map[unclosed_ways[i].back()];
+            // hash_map[unclosed_ways[i].back()].insert(begin, unclosed_ways[i].begin(), unclosed_ways[i].end());
+            hash_map[unclosed_ways[i].front()] = unclosed_ways[i];
+            hash_map.erase(unclosed_ways[i].back());
+            // hash_map[unclosed_ways[i].front()].insert(end, front_way.begin(), front_way.end());
+        }
+        else
+            count_not_found++;
+
+    std::cout << "Found: " << count_found << std::endl;
+    std::cout << "Not found: " << count_not_found << std::endl;
+
+    std::cout << "Hash map size after merging: " << hash_map.size() << std::endl;
+        
+    }
+}
 
 void merge_touching_ways(std::vector<std::vector<osmium::object_id_type>> &ways){
+    std::unordered_map<std::size_t, std::vector<osmium::object_id_type>> hash_map;
+    std::vector<std::vector<osmium::object_id_type>> unclosed_ways;
+    // Consider only ways that are not closed
     for(std::size_t i = 0; i < ways.size(); i++)
-        for(std::size_t j = i+1; j < ways.size(); j++)
-            if(ways[i].back() == ways[j].front()){
-                ways[i].insert(ways[i].end(), ways[j].begin(), ways[j].end());
-                ways.erase(ways.begin() + j);
-                j = i;
-            } else if(ways[i].front() == ways[j].back()){
-                ways[j].insert(ways[j].end(), ways[i].begin(), ways[i].end());
-                ways.erase(ways.begin() + i);
-                if(i==0)
-                    continue;
-                i -= 1;
-            } 
+        if(ways[i].front() != ways[i].back()){
+            unclosed_ways.push_back(ways[i]);
+            hash_map[ways[i].front()] = ways[i]; // hash_map has all unclosed ways
+        }
+    int count_found = 0;
+    int count_not_found = 0;
+    // std::cout << "Unclosed ways: " << unclosed_ways.size() << std::endl;
+    // std::cout << "Hash map size before merging: " << hash_map.size() << std::endl;
+
+    for(std::size_t i = 0; i < unclosed_ways.size(); i++)
+    {
+        if(hash_map.find(unclosed_ways[i].back()) != hash_map.end()){ // if the way is touching another way
+            count_found++; // unclosed way has the front and we check for its end in the hash_map
+            unclosed_ways[i].insert(unclosed_ways[i].end(), hash_map[unclosed_ways[i].back()].begin()+1, hash_map[unclosed_ways[i].back()].end());
+            // hash_map[unclosed_ways[i].front()] = unclosed_ways[i]; // update hash_map with the new way
+            auto end = hash_map[unclosed_ways[i].front()].end();
+            auto front_way = hash_map[unclosed_ways[i].back()];
+            // hash_map[unclosed_ways[i].back()].insert(begin, unclosed_ways[i].begin(), unclosed_ways[i].end());
+            hash_map[unclosed_ways[i].front()] = unclosed_ways[i];
+            hash_map.erase(unclosed_ways[i].back());
+            // hash_map[unclosed_ways[i].front()].insert(end, front_way.begin(), front_way.end());
+        }
+        else
+            count_not_found++;
+
+    std::cout << "Found: " << count_found << std::endl;
+    std::cout << "Not found: " << count_not_found << std::endl;
+
+    std::cout << "Hash map size after merging: " << hash_map.size() << std::endl;
+        
+    }
 }
 
 int main() {
@@ -36,8 +143,8 @@ int main() {
 // Lines 180
 // Grid
     try {
-        // std::string inputFile = "planet-coastlinespbf-cleaned.osm.pbf";
-        std::string inputFile = "antarctica-latest.osm.pbf";
+        std::string inputFile = "planet-coastlinespbf-cleaned.osm.pbf";
+        // std::string inputFile = "antarctica-latest.osm.pbf";
         
         // std::ofstream outputFile("t2.out");
         std::ofstream outputFile("t2_delete.out");
@@ -51,7 +158,7 @@ int main() {
         // Create a GeoJSONFactory for converting geometries to GeoJSON
         osmium::geom::GeoJSONFactory<> geojson_factory;
         std::vector<osmium::object_id_type> node_ids;
-        std::vector<std::vector<osmium::object_id_type>> way_nodes;
+        std::vector<std::vector<osmium::object_id_type>> ways_collection;
 
         while (osmium::memory::Buffer buffer = reader.read()) {
             // make an empty list of node ids that we will gather if its part of a way of coastline
@@ -62,10 +169,10 @@ int main() {
                     const auto& way = static_cast<const osmium::Way&>(item);
                                     
                     if (way.tags().has_tag("natural", "coastline")) {
-                        way_nodes.push_back(std::vector<osmium::object_id_type>());
+                        ways_collection.push_back(std::vector<osmium::object_id_type>());
                         for (const auto& node : way.nodes()) {
                             node_ids.push_back(node.ref());
-                            way_nodes.back().push_back(node.ref());
+                            ways_collection.back().push_back(node.ref());
                             // std::cout << node.ref() << std::endl;
                         }
                         // std::cout << geojson_factory.create_point(node.location()) << std::endl;
@@ -76,16 +183,22 @@ int main() {
                 }
             }
         }
-        // reader.close();
-
+        reader.close();
+        
         std::cout << "nodes count: " << node_ids.size() << std::endl;
-        std::cout << "ways count: " << way_nodes.size() << std::endl;
         // 689471
         // 56418325 in planet-coastlines
-
-        merge_touching_ways(way_nodes);
-        std::cout << "ways count after merging: " << way_nodes.size() << std::endl;
+        std::cout << "ways count: " << ways_collection.size() << std::endl;
+        // 19224
+        // 798 after merging
         
+        merge_touching_ways(ways_collection);
+        // merge_touching_ways_nestedloop(ways_collection);
+        // std::cout << "ways count after merging: " << ways_collection.size() << std::endl;
+        
+        return 0;
+
+        // write_to_file(outputFile):
         // Open output file and write the json data
         if (outputFile.is_open()) 
         {   
@@ -94,8 +207,7 @@ int main() {
             // reread pbf file
             // osmium::io::Reader reader2{input_file};
             // osmium::io::Reader reader2{input_file, osmium::osm_entity_bits::node | osmium::osm_entity_bits::way | osmium::osm_entity_bits::relation};
-            reader.close();
-            osmium::io::Reader reader{input_file, osmium::osm_entity_bits::node | osmium::osm_entity_bits::way | osmium::osm_entity_bits::relation};
+            osmium::io::Reader reader{input_file, osmium::osm_entity_bits::node | osmium::osm_entity_bits::way};
             
             while (const auto& buffer = reader.read()) {
                 for (const auto& item : buffer) {
@@ -103,14 +215,15 @@ int main() {
                         const auto& node = static_cast<const osmium::Node&>(item);
                         // check if node id is in the list of node ids
                         if (std::find(node_ids.begin(), node_ids.end(), node.id()) != node_ids.end()){
-                            outputFile << "\t{" << std::endl; 
-                            outputFile << "\t\t" << "\"type\": \"Feature\"," << std::endl;
-                            outputFile << "\t\t" << "\"properties\": {}," << std::endl;
-                            outputFile << "\t\t" << "\"geometry\": " << std::endl;
+                            outputFile << "{\"type\": \"Feature\", \"properties\": {}, \"geometry\": " << geojson_factory.create_point(node) << "},\n";
+                            // outputFile << "\t{" << std::endl; 
+                            // outputFile << "\t\t" << "\"type\": \"Feature\"," << std::endl;
+                            // outputFile << "\t\t" << "\"properties\": {}," << std::endl;
+                            // outputFile << "\t\t" << "\"geometry\": " << std::endl;
                             
-                            outputFile << "\t\t" << geojson_factory.create_point(node) << std::endl; 
+                            // outputFile << "\t\t" << geojson_factory.create_point(node) << std::endl; 
 
-                            outputFile << "\t}," << std::endl;
+                            // outputFile << "\t}," << std::endl;
                         }
                     }
                 }

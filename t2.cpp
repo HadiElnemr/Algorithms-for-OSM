@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include <unordered_map>
+#include <unordered_set>
 #include <map>
 #include <utility>
 
@@ -129,13 +130,14 @@ void merge_touching_ways(std::vector<std::vector<osmium::object_id_type>> &ways)
         else
             count_not_found++;
 
-    std::cout << "Found: " << count_found << std::endl;
-    std::cout << "Not found: " << count_not_found << std::endl;
+    // std::cout << "Found: " << count_found << std::endl;
+    // std::cout << "Not found: " << count_not_found << std::endl;
 
-    std::cout << "Hash map size after merging: " << hash_map.size() << std::endl;
+    // std::cout << "Hash map size after merging: " << hash_map.size() << std::endl;
         
     }
 }
+
 int read_coastline_ways(std::string inputFile, std::vector<std::vector<osmium::object_id_type>> &ways_collection)
 {
     try {
@@ -169,7 +171,7 @@ int read_coastline_ways(std::string inputFile, std::vector<std::vector<osmium::o
     }
 }
 
-int read_coastline_nodes(std::string inputFile, std::vector<osmium::object_id_type> &node_ids,
+int read_coastline_nodes(std::string inputFile, std::unordered_set<osmium::object_id_type> &node_ids,
                          std::unordered_map<osmium::object_id_type, osmium::Location> &node_locations)
 {
     try {
@@ -183,7 +185,7 @@ int read_coastline_nodes(std::string inputFile, std::vector<osmium::object_id_ty
 
                 if (item.type() == osmium::item_type::node) {
                     const auto& node = static_cast<const osmium::Node&>(item);
-                    if(std::find(node_ids.begin(), node_ids.end(), node.id()) != node_ids.end())
+                    if(node_ids.find(node.id()) != node_ids.end())
                         node_locations[node.id()] = node.location();
                 }
             }
@@ -197,19 +199,23 @@ int read_coastline_nodes(std::string inputFile, std::vector<osmium::object_id_ty
     }
 }
 
-// int read_coastline_nodes_objects(){
+void extract_nodes_from_ways(std::vector<std::vector<osmium::object_id_type>> &ways_collection, std::unordered_set<osmium::object_id_type> &node_ids)
+{
+     
+    for (auto way : ways_collection)
+        for (auto node_id : way)
+            node_ids.insert(node_id);
+}
 
-// }
-
-int write_geojson_nodes(std::string outputFilePath, std::vector<osmium::Node> nodes){
+int write_geojson_nodes(std::string outputFilePath, std::unordered_map<osmium::object_id_type, osmium::Location> &nodes){
     std::ofstream outputFile(outputFilePath);
     osmium::geom::GeoJSONFactory<> geojson_factory;
     if (outputFile.is_open()) 
     {   
         outputFile << "{\n\t\"type\": \"FeatureCollection\",\n\t\"features\": [\n";
 
-        for (const auto& node : nodes) {
-            outputFile << "{\"type\": \"Feature\", \"properties\": {}, \"geometry\": " << geojson_factory.create_point(node) << "},\n";
+        for (auto& node : nodes){
+            outputFile << "{\"type\": \"Feature\", \"properties\": {}, \"geometry\": " << geojson_factory.create_point(node.second) << "},\n";
         }
 
         outputFile << "\t]\n}";
@@ -341,76 +347,26 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    try {
-        const std::string input_file_name = argv[1];
-        const std::string output_file_name = argv[2];
+    std::string input_file_name = argv[1];
+    std::string output_file_name = argv[2];
 
-        osmium::io::File input_file{input_file_name};
-        osmium::io::Reader reader{input_file, osmium::osm_entity_bits::node | osmium::osm_entity_bits::way};
+    std::vector<std::vector<osmium::object_id_type>> ways_collection;
+    std::unordered_set<osmium::object_id_type> node_ids;
+    std::unordered_map<osmium::object_id_type, osmium::Location> node_locations;
 
-        // Create a GeoJSONFactory for converting geometries to GeoJSON
-        osmium::geom::GeoJSONFactory<> geojson_factory;
-        std::vector<osmium::object_id_type> node_ids;
-        std::vector<std::vector<osmium::object_id_type>> ways_collection;
+    read_coastline_ways(input_file_name, ways_collection);
+    std::cout << "Coastline Ways count: " << ways_collection.size() << std::endl;
+    extract_nodes_from_ways(ways_collection, node_ids);
+    std::cout << "Nodes extracted: " << node_ids.size() << std::endl;
+    read_coastline_nodes(input_file_name, node_ids, node_locations);
+    std::cout << "Coastline Nodes count: " << node_locations.size() << std::endl;
 
-        while (osmium::memory::Buffer buffer = reader.read()) {
-            // make an empty list of node ids that we will gather if its part of a way of coastline
+    // merge_touching_ways(ways_collection);
 
-            for (const auto& item : buffer) {
+    if (write_geojson_nodes(output_file_name, node_locations) == 0)
+        std::cout << "GeoJSON file written successfully\n";
+    else
+        std::cerr << "Error writing GeoJSON file\n";
 
-                if (item.type() == osmium::item_type::way) {
-                    const auto& way = static_cast<const osmium::Way&>(item);
-                                    
-                    if (way.tags().has_tag("natural", "coastline")) {
-                        ways_collection.push_back(std::vector<osmium::object_id_type>());
-                        for (const auto& node : way.nodes()) {
-                            node_ids.push_back(node.ref());
-                            ways_collection.back().push_back(node.ref());
-                        }
-                    }
-                }
-            }
-        }
-        reader.close();
-        
-        merge_touching_ways(ways_collection);
-
-        // write_to_file(outputFile):
-        // Open output file and write the json data
-        std::ofstream outputFile(output_file_name);
-        if (outputFile.is_open()) 
-        {   
-            outputFile << "{\n\t\"type\": \"FeatureCollection\",\n\t\"features\": [\n";
-
-            // reread pbf file
-            osmium::io::Reader reader{input_file, osmium::osm_entity_bits::node | osmium::osm_entity_bits::way};
-            
-            while (const auto& buffer = reader.read()) {
-                for (const auto& item : buffer) {
-                    if (item.type() == osmium::item_type::node) {
-                        const auto& node = static_cast<const osmium::Node&>(item);
-                        // check if node id is in the list of node ids
-                        if (std::find(node_ids.begin(), node_ids.end(), node.id()) != node_ids.end()){
-                            outputFile << "{\"type\": \"Feature\", \"properties\": {}, \"geometry\": " << geojson_factory.create_point(node) << "},\n";
-                        }
-                    }
-                }
-            }
-            reader.close();
-
-            outputFile << "\t]\n}";
-            
-        }
-        else
-        {
-            std::cerr << "Error opening file\n";
-        }
-
-        reader.close();
-        return 0;
-    } catch (const std::exception& e) {
-        // All exceptions used by the Osmium library derive from std::exception.
-        std::cerr << e.what() << '\n';
-        return 1;
-    }
+    return 0;
 }

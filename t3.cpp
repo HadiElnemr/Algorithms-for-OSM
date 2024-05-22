@@ -7,6 +7,8 @@
 
 #include <cmath>
 
+#include <unordered_map>
+
 // Great Circle Distance calculation    [http://www.movable-type.co.uk/scripts/latlong.html]
 // Haversine formula
 double great_circle_distance(double lat1, double lon1, double lat2, double lon2){
@@ -46,26 +48,25 @@ class NvectorSpherical {
 };
 
 int main() {
-   
+
     return 0;
 }
-// double toNvector(double lon, double lat) { 
-//         double φ = lat.toRadians();
-//         double λ = this.lon.toRadians();
-
-//         double sinφ = Math.sin(φ), cosφ = Math.cos(φ);
-//         double sinλ = Math.sin(λ), cosλ = Math.cos(λ);
-
-//         // right-handed vector: x -> 0°E,0°N; y -> 90°E,0°N, z -> 90°N
-//         const x = cosφ * cosλ;
-//         const y = cosφ * sinλ;
-//         const z = sinφ;
-
-//         // return new NvectorSpherical(x, y, z);
-//         return x, y, z;
-// }
 
 
+// Find the bounding box for each of the closed ways
+void boundingBox(std::vector<std::vector<osmium::object_id_type>> closed_ways, std::unordered_map<osmium::object_id_type, osmium::Location> node_locations){
+    for (auto way : closed_ways){
+        double min_lat = 90, max_lat = -90, min_lon = 180, max_lon = -180;
+        for (auto node : way){
+            osmium::Location loc = node_locations[node];
+            if (loc.lat() < min_lat) min_lat = loc.lat();
+            if (loc.lat() > max_lat) max_lat = loc.lat();
+            if (loc.lon() < min_lon) min_lon = loc.lon();
+            if (loc.lon() > max_lon) max_lon = loc.lon();
+        }
+        std::cout << "Bounding box: " << min_lat << ", " << min_lon << ", " << max_lat << ", " << max_lon << std::endl;
+    }
+}
 
 
 

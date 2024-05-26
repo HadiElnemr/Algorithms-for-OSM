@@ -1,0 +1,3 @@
+/home/hadi/Infotech-Stuttgart/Algorithms_for_OSM/Tasks/build/CMakeFiles/Algorithms_for_OSM.dir
+/home/hadi/Infotech-Stuttgart/Algorithms_for_OSM/Tasks/build/CMakeFiles/edit_cache.dir
+/home/hadi/Infotech-Stuttgart/Algorithms_for_OSM/Tasks/build/CMakeFiles/rebuild_cache.dir

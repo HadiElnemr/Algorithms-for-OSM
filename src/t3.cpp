@@ -1,34 +1,9 @@
 #include "t3.h"
 #include "t2.h"
 
-// // Great Circle Distance calculation    [http://www.movable-type.co.uk/scripts/latlong.html]
-// // Haversine formula
-// float great_circle_distance(float lat1, float lon1, float lat2, float lon2){
-//     float R = 6371e3; // metres
-//     float phi1 = lat1 * M_PI / 180; // φ, λ in radians
-//     float phi2 = lat2 * M_PI / 180;
-//     float delta_phi = (lat2-lat1) * M_PI / 180;
-//     float delta_lambda = (lon2-lon1) * M_PI / 180;
+#include <cmath>
+#include <Eigen/Dense>
 
-//     float a = sin(delta_phi/2) * sin(delta_phi/2) +
-//             cos(phi1) * cos(phi2) *
-//             sin(delta_lambda/2) * sin(delta_lambda/2);
-//     float c = 2 * atan2(sqrt(a), sqrt(1-a));
-
-//     float d = R * c; // in metres
-//     return d;
-// }
-
-// // Law of Cosines formula
-// float great_circle_distance2(float lat1, float lon1, float lat2, float lon2){
-//     float R = 6371e3; // metres
-//     float phi1 = lat1 * M_PI / 180; // φ, λ in radians
-//     float phi2 = lat2 * M_PI / 180;
-//     float delta_lambda = (lon2-lon1) * M_PI / 180;
-
-//     float d = acos( sin(phi1)*sin(phi2) + cos(phi1)*cos(phi2)*cos(delta_lambda) ) * R;
-//     return d;
-// }
 
 // class NvectorSpherical {
 //     public:
@@ -79,7 +54,10 @@ void get_final_closed_ways(std::string &input_file_name,
 }
 
 // Find the bounding box for each of the closed ways
-void getBoundingBox(std::vector<std::vector<osmium::object_id_type>> &closed_ways, std::unordered_map<osmium::object_id_type, osmium::Location> &node_locations, std::vector<std::pair<osmium::Location, osmium::Location>> &bounding_boxes){
+void getBoundingBox(std::vector<std::vector<osmium::object_id_type>> &closed_ways,
+                    std::unordered_map<osmium::object_id_type, osmium::Location> &node_locations,
+                    std::vector<std::pair<osmium::Location, osmium::Location>> &bounding_boxes)
+{
     for (auto way : closed_ways){
         float min_lat = 90, max_lat = -90, min_lon = 180, max_lon = -180;
         for (auto node : way){
@@ -191,10 +169,7 @@ int main_task3(int argc, char* argv[])
 
     for(auto Q : test_points){
         std::cout << Q << std::endl;
-        if(isWater(Q, bounding_boxes, node_locations))
-            std::cout << "----Water----" << std::endl;
-        else
-            std::cout << "----Land----" << std::endl;
+        std::cout << (isWater(Q, bounding_boxes, node_locations)? "----Water----" : "----Land----") << std::endl;
     }
 
     return 0;

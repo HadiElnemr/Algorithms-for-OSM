@@ -57,5 +57,6 @@
     * Fresh restart of laptop seems to remove the memory issue
 
 * [X] Check [https://github.com/tylerjereddy/grid-point-sphere] (Li, 2017) paper implementation
+* [X] Check [https://alienryderflex.com/polygon/] for ray casting algorithm
 
 Bresenham to list edges that pass by a grid cell

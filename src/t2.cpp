@@ -257,6 +257,33 @@ int write_geojson_nodes(std::string &outputFilePath, std::unordered_map<osmium::
     return 0;
 }
 
+// int write_geojson_ways(std::string &outputFilePath, std::unordered_map<osmium::object_id_type, osmium::Location> &ways){
+//     std::ofstream outputFile(outputFilePath);
+//     osmium::geom::GeoJSONFactory<> geojson_factory;
+//     if (outputFile.is_open())
+//     {
+//         outputFile << "{\n\t\"type\": \"FeatureCollection\",\n\t\"features\": [\n";
+//         bool first = true;
+//         for (auto& way : ways){
+//             if (first)
+//                 first = false;
+//             else
+//                 outputFile << ",\n";
+
+//             outputFile << "{\"type\": \"Feature\", \"properties\": {}, \"geometry\": " << geojson_factory.create_linestring() << "}";
+//         }
+
+//         outputFile << "\t]\n}";
+
+//     }
+//     else
+//     {
+//         std::cerr << "Error opening file\n";
+//     }
+
+//     return 0;
+// }
+
 void get_closed_ways(std::vector<std::vector<osmium::object_id_type>> &ways_collection, std::vector<std::vector<osmium::object_id_type>> &closed_ways)
 {
     for (auto way : ways_collection)

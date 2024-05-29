@@ -46,7 +46,7 @@ void get_final_closed_ways(std::string &input_file_name,
     // Merge unstitched ways with stitched ways
     for(auto way : closed_ways)
         final_closed_ways.push_back(way);
-    std::cout << "Stitched + Closed Ways count: " << final_closed_ways.size() << std::endl;
+    std::cout << "\nStitched + Closed Ways final_closed_ways count: " << final_closed_ways.size() << std::endl;
     // final_closed_ways = stitched_ways;
 }
 
@@ -56,7 +56,7 @@ void getBoundingBox(std::vector<std::vector<osmium::object_id_type>> &closed_way
                     std::vector<std::pair<osmium::Location, osmium::Location>> &bounding_boxes)
 {
     for(auto way : closed_ways){
-        float min_lat = 90, max_lat = -90, min_lon = 180, max_lon = -180;
+        float min_lat = 90.0, max_lat = -90.0, min_lon = 180.0, max_lon = -180.0;
         for(auto node : way){
             osmium::Location loc = node_locations[node];
             if (loc.lat() < min_lat) min_lat = loc.lat();
@@ -136,8 +136,6 @@ bool isEdgeCrossed(osmium::Location Q, osmium::Location i, osmium::Location j){
             >
             Q.lat()
             );
-    if((i.lon() < Q.lon() && j.lon() >= Q.lon()) || (j.lon() < Q.lon() && i.lon() >= Q.lon()))
-        std::cout << i.lon() << "   " << Q.lon() << "   " << j.lon() << std::endl;
     return false;
 }
 
@@ -149,7 +147,6 @@ bool isBoundingBoxCrossed(osmium::Location &Q, std::pair<osmium::Location, osmiu
     osmium::Location p2 = osmium::Location(B.lon(), A.lat());
     osmium::Location p3 = osmium::Location(B.lon(), B.lat());
     osmium::Location p4 = osmium::Location(A.lon(), B.lat());
-    std::cout << ((isEdgeCrossed(Q, p1, p2) + isEdgeCrossed(Q, p2, p3) + isEdgeCrossed(Q, p3, p4) + isEdgeCrossed(Q, p4, p1) > 0)?"Is edge crossed: yes\n":"");
     return isEdgeCrossed(Q, p1, p2) ^ isEdgeCrossed(Q, p2, p3) ^ isEdgeCrossed(Q, p3, p4) ^ isEdgeCrossed(Q, p4, p1);
 }
 
@@ -225,9 +222,11 @@ bool isWater(osmium::Location &Q,
 
 
     // Comment
+    bool parity_odd = 0;
     for(std::size_t i = 0; i<closed_ways.size(); i++){
-        if(isPointInPolygon(Q, closed_ways[i], node_locations))                                // if Q is in the closed way "land", then naturlich Land
-            return false;
+        parity_odd ^= isPointInPolygon(Q, closed_ways[i], node_locations);                                // if Q is in the closed way "land", then naturlich Land
+        // if(isPointInPolygon(Q, closed_ways[i], node_locations))                                // if Q is in the closed way "land", then naturlich Land
+        //     return false;   // Wrong
     }
 
     //Uncomment
@@ -239,10 +238,20 @@ bool isWater(osmium::Location &Q,
     //         return false;
     // }
 
-    std::cout << "\nNot inside any Land" << std::endl;
+    // std::cout << "\nNot inside any Land" << std::endl;
 
-    return true;
+    return parity_odd;
 }
+
+// float way_length(std::vector<osmium::object_id_type> &way,
+//                  std::unordered_map<osmium::object_id_type, osmium::Location> &node_locations)
+// {
+//     float length = 0;
+//     for(std::size_t i = 0; i<way.size()-1; i++){
+//         length += node_locations[way[i]].distance_to(node_locations[way[i+1]]);
+//     }
+//     return length;
+// }
 
 int main_task3(int argc, char* argv[])
 {
@@ -262,16 +271,20 @@ int main_task3(int argc, char* argv[])
     // final_closed_ways.clear();
 
     std::vector<osmium::Location> test_points;
-    // test_points.push_back(osmium::Location(-26.732548749488956, 10.671596281947856));
-    // test_points.push_back(osmium::Location(11.939290077225365, 12.162589122776751));
-    // test_points.push_back(osmium::Location(16.193990227322075, -80.31058318376975));
+    test_points.push_back(osmium::Location(-26.732548749488956, 10.671596281947856));
+    test_points.push_back(osmium::Location(11.939290077225365, 12.162589122776751));
+    test_points.push_back(osmium::Location(16.193990227322075, -80.31058318376975));
     test_points.push_back(osmium::Location(-23.30866463537828, -85.05112877980659)); // In Antarctica
     test_points.push_back(osmium::Location(122.32121620632046, -72.40337730584133)); // In Antarctica other side
+    test_points.push_back(osmium::Location(61.6524702239368, 76.2930632732388)); // In Russia
+    test_points.push_back(osmium::Location(-38.48528429954149, 77.52013957622279)); // In Greenland
+    test_points.push_back(osmium::Location(-89.46894116718542, 85.05112877980659)); // In Water near north pole
 
     for(auto Q : test_points){
         std::cout << Q << std::endl;
         std::cout << (isWater(Q, bounding_boxes, final_closed_ways, node_locations)? "----Water----" : "----Land----") << std::endl;
     }
+    // std::cout << isEdgeCrossed(osmium::Location(3,2), osmium::Location(2,3), osmium::Location(4,3)) << std::endl;
 
     return 0;
 }

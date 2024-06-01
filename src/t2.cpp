@@ -162,17 +162,13 @@ int read_coastline_ways(std::string &inputFile, std::vector<std::vector<osmium::
             // make an empty list of node ids that we will gather if its part of a way of coastline
 
             for (const auto& item : buffer) {
-
-                if (item.type() == osmium::item_type::way) {
+                    // reading ways only
                     const auto& way = static_cast<const osmium::Way&>(item);
-
                     if (way.tags().has_tag("natural", "coastline")) {
                         ways_collection.push_back(std::vector<osmium::object_id_type>());
-                        for (const auto& node : way.nodes()) {
+                        for (const auto& node : way.nodes())
                             ways_collection.back().push_back(node.ref());
-                        }
                     }
-                }
             }
         }
         ways_collection.shrink_to_fit();
@@ -193,6 +189,43 @@ void extract_nodes_from_ways(std::vector<std::vector<osmium::object_id_type>> &w
             node_ids.insert(node_id);
 }
 
+int read_coastline_ways_and_node_ids(std::string &inputFile,
+                                     std::vector<std::vector<osmium::object_id_type>> &ways_collection,
+                                     std::unordered_set<osmium::object_id_type> &node_ids)
+{
+    try {
+        osmium::io::File input_file{inputFile};
+        osmium::io::Reader reader{input_file, osmium::osm_entity_bits::way};
+
+        while (osmium::memory::Buffer buffer = reader.read()) {
+            // make an empty list of node ids that we will gather if its part of a way of coastline
+
+            for (const auto& item : buffer) {
+
+                if (item.type() == osmium::item_type::way) {
+                    const auto& way = static_cast<const osmium::Way&>(item);
+
+                    if (way.tags().has_tag("natural", "coastline")) {
+                        ways_collection.push_back(std::vector<osmium::object_id_type>());
+                        for (const auto& node : way.nodes()) {
+                            ways_collection.back().push_back(node.ref());
+                            node_ids.insert(node.ref());
+                        }
+                    }
+                }
+            }
+        }
+        ways_collection.shrink_to_fit();
+        reader.close();
+
+        return 0;
+    } catch (const std::exception& e) {
+        // All exceptions used by the Osmium library derive from std::exception.
+        std::cerr << e.what() << '\n';
+        return 1;
+    }
+}
+
 int read_coastline_nodes(std::string &inputFile,
                          std::unordered_set<osmium::object_id_type> &node_ids,
                          std::unordered_map<osmium::object_id_type, osmium::Location> &node_locations)
@@ -207,12 +240,10 @@ int read_coastline_nodes(std::string &inputFile,
             // make an empty list of node ids that we will gather if its part of a way of coastline
 
             for (const auto& item : buffer) {
-
-                if (item.type() == osmium::item_type::node) {
+                    // reading nodes only
                     const auto& node = static_cast<const osmium::Node&>(item);
                     if(node_ids.find(node.id()) != node_ids.end())
                         node_locations[node.id()] = node.location();
-                }
             }
         }
         reader.close();
@@ -326,9 +357,10 @@ int main_task2(int argc, char* argv[]) {
     std::unordered_map<osmium::object_id_type, osmium::Location> node_locations;
     std::vector<std::vector<osmium::object_id_type>> stitched_ways;
 
-    read_coastline_ways(input_file_name, ways_collection);
+    // read_coastline_ways(input_file_name, ways_collection);
+    // extract_nodes_from_ways(ways_collection, node_ids);
+    read_coastline_ways_and_node_ids(input_file_name, ways_collection, node_ids);
     std::cout << "Coastline Ways count: " << ways_collection.size() << std::endl;
-    extract_nodes_from_ways(ways_collection, node_ids);
     std::cout << "Nodes extracted: " << node_ids.size() << std::endl;
 
     read_coastline_nodes(input_file_name, node_ids, node_locations);

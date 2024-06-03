@@ -38,7 +38,7 @@ void merge_touching_ways_nestedloop(std::vector<std::vector<osmium::object_id_ty
                 //     continue;
                 // i -= 1;
             }
-            printf("%ld and %ld\n", i, j);
+            // printf("%ld and %ld\n", i, j);
         }
     }
     std::cout << "Removed ways: " << removed_count << std::endl;
@@ -125,7 +125,9 @@ void merge_touching_ways(std::vector<std::vector<osmium::object_id_type>> &unclo
                          bool closed_ways_only)
 {
     std::unordered_map<osmium::object_id_type, std::vector<osmium::object_id_type>> hash_map;
+    std::unordered_map<osmium::object_id_type, std::vector<osmium::object_id_type>> hash_map_back;
     hash_map.reserve(unclosed_ways.size());
+    hash_map_back.reserve(unclosed_ways.size());
 
     for(auto way : unclosed_ways){
         hash_map[way.front()] = way;
@@ -134,22 +136,55 @@ void merge_touching_ways(std::vector<std::vector<osmium::object_id_type>> &unclo
         while(hash_map.find(way.back()) != hash_map.end()){
             way.insert(way.end(), hash_map[way.back()].begin()+1, hash_map[way.back()].end());
             hash_map[way.front()] = way;
-            if(way.front() == way.back()){
+            if(way.front() == way.back())
                 break;
-            }
             hash_map.erase(way.back());
         }
     }
-    stitched_ways.reserve(hash_map.size());
+    std::cout << "---------------Lengh of hash map: " << hash_map.size() << std::endl;
+
+    for(auto& way : hash_map){
+        hash_map_back[way.second.back()] = way.second;
+    }
+    for(auto& way : unclosed_ways){
+        while(hash_map_back.find(way.front()) != hash_map_back.end()){
+            way.insert(way.begin(), hash_map_back[way.front()].begin(), hash_map_back[way.front()].end()-1);
+            hash_map_back[way.back()] = way;
+            if(way.front() == way.back())
+                break;
+            hash_map_back.erase(way.front());
+        }
+    }
+    std::cout << "---------------Lengh of hash map back: " << hash_map_back.size() << std::endl;
+
+    ////
+    // for (size_t i = 0; i < 1; i++)
+        // for(auto way: hash_map){
+        //     if(way.second.front() != way.second.back()){
+        //         while(hash_map.find(way.second.back()) != hash_map.end())
+        //         {
+        //             way.second.insert(way.second.end(), hash_map[way.second.back()].begin()+1, hash_map[way.second.back()].end());
+        //             hash_map[way.second.front()] = way.second;
+        //             if(way.second.front() == way.second.back())
+        //                 break;
+        //             hash_map.erase(way.second.back());
+        //         }
+        //         // std::cout << way.second.front() << " " << way.second.back() << std::endl;
+        //     }
+        // }
+    ////
+
+    stitched_ways.reserve(hash_map_back.size());
     if(closed_ways_only)
-        for(auto way : hash_map){
+        for(auto way : hash_map_back){
             if(way.second.front() == way.second.back())
                 stitched_ways.push_back(way.second);
         }
     else
-        for(auto way : hash_map)
+        for(auto way : hash_map_back)
             stitched_ways.push_back(way.second);
     hash_map.clear();
+    hash_map_back.clear();
 }
 
 int read_coastline_ways(std::string &inputFile, std::vector<std::vector<osmium::object_id_type>> &ways_collection)
@@ -189,7 +224,7 @@ void extract_nodes_from_ways(std::vector<std::vector<osmium::object_id_type>> &w
             node_ids.insert(node_id);
 }
 
-int read_coastline_ways_and_node_ids(std::string &inputFile,
+int read_coastline_ways_and_node_ids(const std::string &inputFile,
                                      std::vector<std::vector<osmium::object_id_type>> &ways_collection,
                                      std::unordered_set<osmium::object_id_type> &node_ids)
 {
@@ -226,8 +261,8 @@ int read_coastline_ways_and_node_ids(std::string &inputFile,
     }
 }
 
-int read_coastline_nodes(std::string &inputFile,
-                         std::unordered_set<osmium::object_id_type> &node_ids,
+int read_coastline_nodes(const std::string &inputFile,
+                         const std::unordered_set<osmium::object_id_type> &node_ids,
                          std::unordered_map<osmium::object_id_type, osmium::Location> &node_locations)
 {
     try {
@@ -262,7 +297,14 @@ void print_geojson_nodes(std::unordered_map<osmium::object_id_type, osmium::Loca
         std::cout << "{\"type\": \"Feature\", \"properties\": {}, \"geometry\": " << geojson_factory.create_point(node.second) << "},\n";
 }
 
-int write_geojson_nodes(std::string &outputFilePath, std::unordered_map<osmium::object_id_type, osmium::Location> &nodes){
+void print_geojson_way(std::vector<osmium::object_id_type> &way, std::unordered_map<osmium::object_id_type, osmium::Location> &nodes)
+{
+    osmium::geom::GeoJSONFactory<> geojson_factory;
+    for(auto& node : way)
+        std::cout << "{\"type\": \"Feature\", \"properties\": {}, \"geometry\": " << geojson_factory.create_point(nodes[node]) << "},\n";
+}
+
+int write_geojson_nodes(const std::string &outputFilePath, std::unordered_map<osmium::object_id_type, osmium::Location> &nodes){
     std::ofstream outputFile(outputFilePath);
     osmium::geom::GeoJSONFactory<> geojson_factory;
     if (outputFile.is_open())

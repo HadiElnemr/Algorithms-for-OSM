@@ -46,7 +46,7 @@ void get_final_closed_ways(std::string &input_file_name,
     ways_collection.clear();
 
     // Stitching
-    merge_touching_ways(unclosed_ways, final_closed_ways, true);
+    merge_touching_ways(unclosed_ways, final_closed_ways, false);
     std::cout << "Unclosed -> Stitched Ways count: " << final_closed_ways.size() << std::endl;
 
     // Merge unstitched ways with stitched ways

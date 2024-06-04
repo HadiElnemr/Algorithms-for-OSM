@@ -84,7 +84,7 @@ float latitude_crossing_X(osmium::Location Q, float lambda1, float lambda2, floa
     return phi1 + (Q.lat() - lambda1) / (lambda2 - lambda1) * (phi2 - phi1);
 }
 
-bool pointInBox(osmium::Location &Q, osmium::Location &A, osmium::Location &B){
+bool isPointInBox(osmium::Location &Q, osmium::Location &A, osmium::Location &B){
     return Q.lat() >= A.lat() && Q.lat() <= B.lat() && Q.lon() >= A.lon() && Q.lon() <= B.lon();
 }
 
@@ -126,15 +126,15 @@ bool isEdgeCrossed(osmium::Location& Q, osmium::Location& i, osmium::Location& j
 }
 
 // Testing
-bool isBoundingBoxCrossed(osmium::Location &Q, std::pair<osmium::Location, osmium::Location> &bounding_box){
-    osmium::Location A = bounding_box.first;                    //  ......B                p4 ...... p3
-    osmium::Location B = bounding_box.second;                   //  A......                p1 ...... p2
-    osmium::Location p1 = osmium::Location(A.lon(), A.lat());
-    osmium::Location p2 = osmium::Location(B.lon(), A.lat());
-    osmium::Location p3 = osmium::Location(B.lon(), B.lat());
-    osmium::Location p4 = osmium::Location(A.lon(), B.lat());
-    return isEdgeCrossed(Q, p1, p2) ^ isEdgeCrossed(Q, p2, p3) ^ isEdgeCrossed(Q, p3, p4) ^ isEdgeCrossed(Q, p4, p1);
-}
+// bool isBoundingBoxCrossed(osmium::Location &Q, std::pair<osmium::Location, osmium::Location> &bounding_box){
+//     osmium::Location A = bounding_box.first;                    //  ......B                p4 ...... p3
+//     osmium::Location B = bounding_box.second;                   //  A......                p1 ...... p2
+//     osmium::Location p1 = osmium::Location(A.lon(), A.lat());
+//     osmium::Location p2 = osmium::Location(B.lon(), A.lat());
+//     osmium::Location p3 = osmium::Location(B.lon(), B.lat());
+//     osmium::Location p4 = osmium::Location(A.lon(), B.lat());
+//     return isEdgeCrossed(Q, p1, p2) ^ isEdgeCrossed(Q, p2, p3) ^ isEdgeCrossed(Q, p3, p4) ^ isEdgeCrossed(Q, p4, p1);
+// }
 
 bool isPointInPolygon(osmium::Location &Q,
                     std::vector<osmium::object_id_type> &way,
@@ -151,9 +151,6 @@ bool isPointInPolygon(osmium::Location &Q,
   return parity_odd;
 }
 
-////////////////////////////////////////
-
-
 bool isWater(osmium::Location &Q,
             std::vector<std::pair<osmium::Location, osmium::Location>> &bounding_boxes,
             std::vector<std::vector<osmium::object_id_type>> &closed_ways,
@@ -164,18 +161,11 @@ bool isWater(osmium::Location &Q,
     std::vector<unsigned int> crossed_ways_bounding_boxes_indices;
     // Check if the casting ray crosses the bounding box
     for(std::size_t i = 0; i<bounding_boxes.size(); i++){
-        //////////////////////////////
-        // if(pointInBox(Q, A, B)){
-        //     Q_bounding_boxes.push_back(std::make_pair(A, B));
-        //     matched_ways_bounding_boxes_indices.push_back(i);
-        // }
-        //////////////////////////////
-
-        if(pointInBox(Q, bounding_boxes[i].first, bounding_boxes[i].second))
+        if(isPointInBox(Q, bounding_boxes[i].first, bounding_boxes[i].second))
             crossed_ways_bounding_boxes_indices.push_back(i);
     }
 
-    std::cout << "\nCrossed bounding boxes: " << crossed_ways_bounding_boxes_indices.size() << std::endl;
+    std::cout << "\nMatched bounding boxes: " << crossed_ways_bounding_boxes_indices.size() << std::endl;
 
 
     // Comment
@@ -217,16 +207,6 @@ int main_task3(int argc, char* argv[])
     std::unordered_map<osmium::object_id_type, osmium::Location> node_locations;
 
     get_final_closed_ways(input_file_name, final_closed_ways, node_locations);
-//          |
-//          |
-//          ^
-    // // Loading is faster::
-    // std::ifstream infile_final_closed("outfile-final_closed.dat", std::ifstream::binary);
-    // final_closed_ways.resize(625855); //625855
-    // infile_final_closed.read(reinterpret_cast<char*>(final_closed_ways.data() /* or &v[0] pre-C++11 */), sizeof(int) * 625855);
-    // final_closed_ways.shrink_to_fit();
-    // read_coastline_nodes(input_file_name, node_ids, node_locations);
-    // infile_final_closed.close();
 
     std::cout << node_locations.size() << std::endl;
     std::cout << "test in bounding boxes" << std::endl;
@@ -234,48 +214,19 @@ int main_task3(int argc, char* argv[])
     std::vector<std::pair<osmium::Location, osmium::Location>> bounding_boxes;
     getBoundingBox(final_closed_ways, node_locations, bounding_boxes);
     std::cout << "number of bounding boxes: " << bounding_boxes.size() << std::endl;
-    // final_closed_ways.clear();
-
-    std::cout << "Not in bounding boxes" << std::endl;
-
-
-    ////////////////////////////////////////////////////////////// testing saving vector
-
-    // std::ofstream outfile_final_closed("outfile-final_closed.dat", std::ofstream::binary);
-    // // std::ofstream outfile_node_locations("outfile-node_locations.dat", std::ofstream::binary);
-    // outfile_final_closed.write(reinterpret_cast<const char*>(final_closed_ways.data() /* or &v[0] pre-C++11 */), sizeof(int) * final_closed_ways.size());
-    // // outfile_node_locations.write(reinterpret_cast<const char*>(node_locations.data() /* or &v[0] pre-C++11 */), sizeof(int) * node_locations.size());
-    // outfile_final_closed.close();
-
-    // read file again
-    // std::ifstream infile_final_closed("outfile-final_closed.dat", std::ifstream::binary);
-    // std::vector<std::vector<osmium::object_id_type>> final_closed_ways2;
-
-    // final_closed_ways2.resize(626000); // 625855
-    // infile_final_closed.read(reinterpret_cast<char*>(final_closed_ways2.data() /* or &v[0] pre-C++11 */), sizeof(int) * final_closed_ways2.size());
-    // final_closed_ways2.shrink_to_fit();
-
-    // std::cout << "Reading......................................" << std::endl;
-    // read_coastline_nodes(input_file_name, node_ids, node_locations2);
-    // std::cout << "Finished......................................" << std::endl;
-
-    //////////////////////////////////////////////////////////////  end testing saving vector
-
-
-
 
     std::vector<osmium::Location> test_points;
     // test_points.push_back(osmium::Location(-26.732548749488956, 10.671596281947856));
     // test_points.push_back(osmium::Location(11.939290077225365, 12.162589122776751));
     // test_points.push_back(osmium::Location(16.193990227322075, -80.31058318376975));
     test_points.push_back(osmium::Location(-23.30866463537828, -85.05112877980659)); // In Antarctica
-    // test_points.push_back(osmium::Location(122.32121620632046, -72.40337730584133)); // In Antarctica other side
-    // test_points.push_back(osmium::Location(61.6524702239368, 76.2930632732388)); // In Russia
-    // test_points.push_back(osmium::Location(-38.48528429954149, 77.52013957622279)); // In Greenland
-    // test_points.push_back(osmium::Location(-89.46894116718542, 85.05112877980659)); // In Water near north pole
-    // test_points.push_back(osmium::Location(-183.2858570662184, 81.88365705783642)); // In Water near north pole  // Doesn't work, throws an error: osmium::invalid_location
-    // test_points.push_back(osmium::Location(161.17794752875415, 5.768768463425289)); // In Water Pacific Ocean
-    // test_points.push_back(osmium::Location(-190.18369831686493, 82.69225385345266)); // In Water North pole   // error: osmium::invalid_location
+    test_points.push_back(osmium::Location(122.32121620632046, -72.40337730584133)); // In Antarctica other side
+    test_points.push_back(osmium::Location(61.6524702239368, 76.2930632732388)); // In Russia
+    test_points.push_back(osmium::Location(-38.48528429954149, 77.52013957622279)); // In Greenland
+    test_points.push_back(osmium::Location(-89.46894116718542, 85.05112877980659)); // In Water near north pole
+    test_points.push_back(osmium::Location(-183.2858570662184, 81.88365705783642)); // In Water near north pole  // Doesn't work, throws an error: osmium::invalid_location
+    test_points.push_back(osmium::Location(161.17794752875415, 5.768768463425289)); // In Water Pacific Ocean
+    test_points.push_back(osmium::Location(-190.18369831686493, 82.69225385345266)); // In Water North pole   // error: osmium::invalid_location
 
     for(auto Q : test_points){
         std::cout << Q << std::endl;
